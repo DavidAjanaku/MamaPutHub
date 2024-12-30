@@ -1,84 +1,77 @@
 import React, { useState, useEffect } from "react";
-import { shuffle } from "lodash"; // Import the shuffle function from the lodash library
-
-import ImageCarouselFrame from "../components/ImageCarouselFrame";
-import { account, databases } from "../services/appwriteConfig";
-import emptyBookmarkIcon from "/assets/emptybookmark.png";
+import { shuffle } from "lodash";
 import { Link, useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { saveBookmark } from "../services/appwriteConfig";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+
+import ImageCarouselFrame from "../components/ImageCarouselFrame";
+import WelcomeFrame from "../components/WelcomeFrame";
+import { account, databases, saveBookmark } from "../services/appwriteConfig";
+import emptyBookmarkIcon from "/assets/emptybookmark.png";
 import fullBookmarkIcon from "/assets/fullbookmark.png";
 
-import "../index.css";
+const Homepage = () => {
+  const [carouselItems, setCarouselItems] = useState([]);
+  const [bookmarkStatus, setBookmarkStatus] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const navigate = useNavigate();
+  const userId = account.get();
 
-import WelcomeFrame from "../components/WelcomeFrame";
-
-const Homepage = (props) => {
-  // Define state variables using the useState hook
-
-
-  const [carouselItems, setCarouselItems] = useState([]); // Holds the items for the image carousel
-
-
-  const [bookmarkStatus, setBookmarkStatus] = useState([]); // Holds the bookmark status for each item by saving it to users library
-
-
-  const [showModal, setShowModal] = useState(false); // Controls the visibility of a modal
-
-  const navigate = useNavigate(); // Provides navigation functionality
-
-  const userId = account.get(); // Retrieves the user ID from the account service
-
-  userId.then(
-    function (response) {
-      console.log(response);
-      console.log(response.$id);
-    },
-    function (error) {
-      console.log(error);
-    }
-  );
-
-  // Fetches the recipes items and initialize the bookmark status when the component mounts
   useEffect(() => {
-    let promise = databases.listDocuments(
-      "64773737337f23de254d",
-      "647b9e24d59661e7bfbe",
-      []
-    );
-
-    promise.then(
-      function (response) {
-        const randomizedItems = shuffle(response.documents); // Randomize the order of recipes using lodash's shuffle function
-
-
-        setCarouselItems(randomizedItems); // Update the carousel items state
-
-
-        setBookmarkStatus(Array(response.documents.length).fill(false)); // Initialize the bookmark status with an array of false values
-      },
-      function (error) {
-        console.log(error);
+    const fetchRecipes = async () => {
+      try {
+        setIsLoading(true);
+        const response = await databases.listDocuments(
+          "64773737337f23de254d",
+          "647b9e24d59661e7bfbe",
+          []
+        );
+        const randomizedItems = shuffle(response.documents);
+        setCarouselItems(randomizedItems);
+        setBookmarkStatus(Array(response.documents.length).fill(false));
+      } catch (error) {
+        console.error("Error fetching recipes:", error);
+      } finally {
+        setIsLoading(false);
       }
-    );
+    };
+
+    fetchRecipes();
   }, []);
 
-  // Handle click on an image in the carousel and shows more details about the recipe in viewdish
+  const handleScroll = (e) => {
+    const container = e.target;
+    setCanScrollLeft(container.scrollLeft > 0);
+    setCanScrollRight(
+      container.scrollLeft < container.scrollWidth - container.clientWidth
+    );
+  };
+
+  const scroll = (direction) => {
+    const container = document.querySelector('.recipe-carousel');
+    if (container) {
+      const scrollAmount = direction === 'left' ? -container.offsetWidth : container.offsetWidth;
+      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
   const handleImageClick = (index) => {
-    const selectedDish = carouselItems[index];
     navigate(`/ViewDish/${index}`, {
-      state: { dish: selectedDish, array: carouselItems },
+      state: { dish: carouselItems[index], array: carouselItems },
     });
   };
 
-  // Handle click on the bookmark icon
-  const handleBookMarkClick = async (index) => {
+  const handleBookMarkClick = async (index, e) => {
+    e.stopPropagation();
     try {
       const recipe = carouselItems[index];
+      const currentUserId = (await userId).$id;
 
-      const documentId = uuidv4(); // Generate a unique document ID using uuidv4
-      const savedRecipe = await saveBookmark({
-        userId: (await userId).$id,
+      await saveBookmark({
+        userId: currentUserId,
         level: recipe.level,
         type: recipe.type,
         name: recipe.name,
@@ -90,78 +83,136 @@ const Homepage = (props) => {
         picture: recipe.picture,
       });
 
-      console.log("Recipe saved:", savedRecipe);
-
-      // Toggle the bookmark status
-      const updatedBookmarkStatus = [...bookmarkStatus];
-      updatedBookmarkStatus[index] = !updatedBookmarkStatus[index];
-      setBookmarkStatus(updatedBookmarkStatus);
+      setBookmarkStatus(prev => {
+        const updated = [...prev];
+        updated[index] = !updated[index];
+        return updated;
+      });
 
       setShowModal(true);
-
-      setTimeout(() => {
-        setShowModal(false);
-      }, 2000);
+      setTimeout(() => setShowModal(false), 2000);
     } catch (error) {
       console.error("Error saving recipe:", error);
     }
   };
 
+  const RecipeCard = ({ item, index }) => (
+  <div className="group relative w-80 h-96 transition-transform duration-300 hover:scale-105">
+      <button 
+        className="absolute right-4 sm:right-6 top-4 sm:top-6 z-10 p-2 transition-all duration-200 hover:scale-110 bg-white/80 rounded-full backdrop-blur-sm"
+        onClick={(e) => handleBookMarkClick(index, e)}
+        aria-label={bookmarkStatus[index] ? "Remove from bookmarks" : "Add to bookmarks"}
+      >
+        <img
+          src={bookmarkStatus[index] ? fullBookmarkIcon : emptyBookmarkIcon}
+          className="w-4 sm:w-5 h-4 sm:h-5"
+          alt="bookmark"
+        />
+      </button>
+      
+      <div 
+        className="relative h-64 w-64 cursor-pointer overflow-hidden rounded-xl shadow-md bg-white"
+        onClick={() => handleImageClick(index)}
+      >
+        <div className="relative h-36 sm:h-40">
+          <img
+            src={item.picture}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            alt={item.name}
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        </div>
+        
+        <div className="p-3 sm:p-4">
+          <h5 className="font-semibold text-gray-800 text-sm sm:text-base truncate">
+            {item.name}
+          </h5>
+          <div className="flex items-center justify-between mt-1 sm:mt-2">
+            <span className="text-xs sm:text-sm px-2 py-1 bg-gray-100 rounded-full text-gray-600">
+              {item.type}
+            </span>
+            {item.rating && (
+              <span className="text-xs sm:text-sm text-gray-600 flex items-center gap-1">
+                ⭐️ {item.rating}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="bg-background-color h-[94vh] overflow-scroll  m-auto md:h-[100vh] no-scrollbar">
-      <div className="w-10/12 mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <WelcomeFrame />
+        
+        <div className="mb-8 sm:mb-12">
+          <ImageCarouselFrame title="What do you want to eat today?" />
+        </div>
 
-        <ImageCarouselFrame title={"What do you want to eat today?"} />
+        <section className="mb-16 sm:mb-24">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+              Featured Recipes
+            </h2>
+            <Link 
+              to="/RecipesPage" 
+              className="text-sm sm:text-base text-blue-500 hover:text-blue-600 transition-colors"
+            >
+              View All →
+            </Link>
+          </div>
+          
+          {isLoading ? (
+            <div className="flex items-center justify-center h-48 sm:h-64">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            </div>
+          ) : (
+            <div className="relative group">
+              <div 
+                className="recipe-carousel flex gap-4 overflow-x-auto pb-4 scroll-smooth scrollbar-hide -mx-4 px-4"
+                onScroll={handleScroll}
+              >
+                {carouselItems.slice(0, 5).map((item, index) => (
+                  <RecipeCard key={index} item={item} index={index} />
+                ))}
+              </div>
 
-        <div className=" mb-24">
-          <h1 className="text-xl font-semibold">Featured Recipes</h1>
-          <div className="carousel overflow-x-scroll no-scrollbar m-auto h-[22rem]">
-            <div className="inner-carousel flex justify-start">
-              {/* Map through the carousel items and render each item */}
-              {carouselItems.map((item, index) =>
-                index < 5 ? (
-                  <div className="item w-64 h-64" key={index}>
-                    <div className="w-64 h-64 object-center p-4 pl-4 relative cursor-pointer top-0">
-                      <button className="absolute right-5">
-                        {/* Render a bookmark icon based on the bookmark status */}
-                        <img
-                          src={
-                            bookmarkStatus[index]
-                              ? fullBookmarkIcon
-                              : emptyBookmarkIcon
-                          }
-                          className="w-5 my-2"
-                          alt="bookmark"
-                          onClick={() => handleBookMarkClick(index)}
-                        />
-                      </button>
-                      {/* Render the image and its details */}
-                      <img
-                        src={item.picture}
-                        className="rounded-md bg-slate-200 h-full w-full"
-                        alt=""
-                        onClick={() => handleImageClick(index)}
-                      />
-                      <Link to={`/ViewDish/${index}`}>
-                        <div className=" mt-2 ">
-                          <h5 className="text-[14px] font-semibold">
-                            {item.name}
-                          </h5>
-                          <p className="flex items-center text-[14px]">
-                            {item.rating}
-                          </p>
-                          <p className="text-[14px]">{item.type}</p>
-                        </div>
-                      </Link>
-                    </div>
-                  </div>
-                ) : null
-              )}
+              <div className="hidden sm:block">
+                {canScrollLeft && (
+                  <button
+                    onClick={() => scroll('left')}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 h-10 w-10 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  >
+                    <ChevronLeft className="w-6 h-6 text-gray-600" />
+                  </button>
+                )}
+
+                {canScrollRight && (
+                  <button
+                    onClick={() => scroll('right')}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 h-10 w-10 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  >
+                    <ChevronRight className="w-6 h-6 text-gray-600" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {showModal && (
+          <div className="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50 animate-in slide-in-from-bottom-5">
+            <div className="bg-white rounded-lg shadow-lg p-3 sm:p-4 flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full" />
+              <p className="text-sm sm:text-base font-medium text-gray-800">
+                Recipe saved to your library!
+              </p>
             </div>
           </div>
-       
-        </div>
+        )}
       </div>
     </div>
   );

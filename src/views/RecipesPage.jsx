@@ -1,52 +1,78 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import emptyBookmarkIcon from "/assets/emptybookmark.png";
-import fullBookmarkIcon from "/assets/fullbookmark.png";
-import { useNavigate } from "react-router-dom";
-import Tags from "../components/Tags";
-import Header from "../components/Header";
+import { Link, useNavigate } from "react-router-dom";
 import { databases, account } from "../services/appwriteConfig";
 import { saveBookmark } from "../services/appwriteConfig";
+import emptyBookmarkIcon from "/assets/emptybookmark.png";
+import fullBookmarkIcon from "/assets/fullbookmark.png";
+import Header from "../components/Header";
+import Tags from "../components/Tags";
 
-export default function RecipesPage(props) {
-  // State variables
+const RecipeSkeleton = () => {
+  return (
+    <div className="w-64 h-[22rem] p-4">
+      <div className="relative">
+        <div className="absolute right-5 top-2 z-10 bg-gray-200 rounded-full p-1 w-7 h-7 animate-pulse" />
+        <div className="w-full h-64 bg-gray-200 rounded-md animate-pulse" />
+        <div className="mt-4 space-y-2">
+          <div className="h-6 bg-gray-200 rounded w-3/4 animate-pulse" />
+          <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
+          <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse" />
+          <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function RecipesPage({ title }) {
   const [bookmarkStatus, setBookmarkStatus] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [recipes, setRecipes] = useState([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [tags, setTags] = useState([]);
   const [activeTag, setActiveTag] = useState(null);
   const [originalRecipes, setOriginalRecipes] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const userId = account.get();
   const navigate = useNavigate();
+  const itemsPerPage = 6;
 
-  const carouselItems = location.state?.array;
-  const dish = carouselItems && carouselItems[id];
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      setIsLoading(true);
+      try {
+        const response = await databases.listDocuments(
+          "64773737337f23de254d",
+          "647b9e24d59661e7bfbe",
+          []
+        );
+        const updatedRecipes = response.documents.map((recipe) => ({
+          ...recipe,
+          tags: getTagsForRecipe(recipe),
+        }));
+        setRecipes(updatedRecipes);
+        setOriginalRecipes(updatedRecipes);
+        setBookmarkStatus(Array(updatedRecipes.length).fill(false));
+      } catch (error) {
+        console.error("Error fetching recipes:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRecipes();
+  }, []);
 
-  console.log(dish);
-
-  // Function to handle tag click
   const handleTagClick = (tag) => {
-    setCurrentPage(1); // Reset current page to 1
-    setActiveTag(tag); // Update the active tag
-
-    let filteredRecipes = [];
-    if (tag.name === "All") {
-      // If "All" tag is selected, display all recipes
-      filteredRecipes = originalRecipes;
-    } else {
-      // Filter recipes based on the selected tag
-      filteredRecipes = originalRecipes.filter((recipe) =>
-        recipe.tags.includes(tag.name)
-      );
-    }
-
+    setCurrentPage(1);
+    setActiveTag(tag);
+    const filteredRecipes = tag.name === "All" 
+      ? originalRecipes 
+      : originalRecipes.filter(recipe => recipe.tags.includes(tag.name));
     setRecipes(filteredRecipes);
   };
 
-  // Function to handle bookmark click
   const handleBookMarkClick = async (index) => {
     try {
       const recipe = recipes[index];
@@ -56,324 +82,151 @@ export default function RecipesPage(props) {
         recipe.$id
       );
 
-      const username = recipeDocument.username;
-      console.log(username);
-
-      const savedRecipe = await saveBookmark({
+      await saveBookmark({
         userId: (await userId).$id,
         level: recipe.level,
         type: recipe.type,
         description: recipe.description,
         food_name: recipe.name,
-        time: recipe.time ? recipe.time.toString().slice(0, 17) : "",
+        time: recipe.time?.toString().slice(0, 17) ?? "",
         servings: recipe.servings,
         author: recipe.author,
-        username: username, // Update the username here
+        username: recipeDocument.username,
         steps: recipe.steps,
-        rating: recipe.rating ? recipe.rating.toString().slice(0, 11) : "",
+        rating: recipe.rating?.toString().slice(0, 11) ?? "",
         ingredients: recipe.ingredients,
         picture: recipe.picture,
       });
 
-      console.log("Recipe saved:", savedRecipe);
+      setBookmarkStatus(prev => {
+        const newStatus = [...prev];
+        newStatus[index] = !newStatus[index];
+        return newStatus;
+      });
       setShowSuccessModal(true);
-
-      // Hide the success modal after 2 seconds
-      setTimeout(() => {
-        setShowSuccessModal(false);
-      }, 2000);
+      setTimeout(() => setShowSuccessModal(false), 2000);
     } catch (error) {
-      // Handle the error, such as displaying an error message
       console.error("Error saving recipe:", error);
     }
   };
 
-  // Function to handle image click and navigate to recipe detail page
   const handleImageClick = (recipe, index) => {
     navigate(`/ViewDish/${index}`, {
       state: {
         selectedImage: recipe,
-        array: displayedRecipes,
+        array: isSearching ? searchResults : recipes,
       },
     });
   };
 
-  const handleImageClicks = (recipe, index) => {
-    navigate(`/ViewDish/${index}`, {
-      state: {
-        selectedImage: recipe,
-        array: searchResults,
-      },
-    });
-  };
-
-  // useEffect(() => {
-  //     // Fetch recipes from the database
-  //   let promise = databases.listDocuments(
-  //     "64773737337f23de254d",
-  //     "647b9e24d59661e7bfbe",
-  //     []
-  //   );
-
-  //   promise.then(
-  //     function (response) {
-  //       console.log(response);
-  //       const updatedRecipes = response.documents.map((recipe) => ({
-  //         ...recipe,
-  //         tags: getTagsForRecipe(recipe),
-  //       }));
-  //       setRecipes(updatedRecipes);
-  //       setOriginalRecipes(updatedRecipes);
-  //       setBookmarkStatus(Array(updatedRecipes.length).fill(false));
-  //     },
-  //     function (error) {
-  //       console.log(error);
-  //     }
-  //   );
-  // }, []);
-
-  useEffect(() => {
-    // Fetch recipes from the database
-    let promise = databases.listDocuments(
-      "64773737337f23de254d",
-      "647b9e24d59661e7bfbe",
-      []
-    );
-
-    promise.then(
-      function (response) {
-        console.log(response);
-        const updatedRecipes = response.documents.map((recipe) => ({
-          ...recipe,
-          tags: getTagsForRecipe(recipe),
-        }));
-        setRecipes(updatedRecipes);
-        setOriginalRecipes(updatedRecipes);
-        setBookmarkStatus(Array(updatedRecipes.length).fill(false));
-      },
-      function (error) {
-        console.log(error);
-      }
-    );
-  }, []);
-
-  // Function to get tags for a recipe
   const getTagsForRecipe = (recipe) => {
-    const tags = [];
-
-    if (recipe.type && recipe.type.includes("Breakfast")) {
-      tags.push("Breakfast");
-    }
-    if (recipe.type && recipe.type.includes("Brunch")) {
-      tags.push("Brunch");
-    }
-    if (recipe.type && recipe.type.includes("Lunch")) {
-      tags.push("Lunch");
-    }
-    if (recipe.type && recipe.type.includes("Dinner")) {
-      tags.push("Dinner");
-    }
-    if (recipe.type && recipe.type.includes("Diary")) {
-      tags.push("Diary");
-    }
-    if (recipe.type && recipe.type.includes("Snacks")) {
-      tags.push("Snacks");
-    }
-    if (recipe.type && recipe.type.includes("Appetizers")) {
-      tags.push("Appetizers");
-    }
-    if (recipe.type && recipe.type.includes("Salad")) {
-      tags.push("Salad");
-    }
-    if (recipe.type && recipe.type.includes("Soups")) {
-      tags.push("Soups");
-    }
-    if (recipe.type && recipe.type.includes("Pasta and Noodles")) {
-      tags.push("Pasta and Noodles");
-    }
-    if (recipe.type && recipe.type.includes("Dessert")) {
-      tags.push("Dessert");
-    }
-
-    tags.push("All");
-
-    return tags;
+    const mealTypes = [
+      "Breakfast", "Brunch", "Lunch", "Dinner", "Diary", "Snacks",
+      "Appetizers", "Salad", "Soups", "Pasta and Noodles", "Dessert"
+    ];
+    return [...mealTypes.filter(type => recipe.type?.includes(type)), "All"];
   };
+  const RecipeCard = ({ recipe, index }) => (
+    <div className="md:w-64 w-full h-[22rem] p-4">
+      <div className="relative">
+        <button
+          className="absolute right-5 top-2 z-10 bg-white rounded-full p-1"
+          onClick={() => handleBookMarkClick(index)}
+        >
+          <img
+            src={bookmarkStatus[index] ? fullBookmarkIcon : emptyBookmarkIcon}
+            className="w-5 h-5"
+            alt="bookmark"
+          />
+        </button>
+        <img
+          src={recipe.picture}
+          className="w-full h-64 object-cover rounded-md cursor-pointer"
+          alt={recipe.name}
+          onClick={() => handleImageClick(recipe, index)}
+        />
+        <div className="mt-4">
+          <h5 className="text-lg font-semibold truncate">{recipe.name}</h5>
+          <p className="text-sm flex items-center">
+            Rating: {recipe.rating ?? "N/A"}
+          </p>
+          <p className="text-sm">{recipe.type}</p>
+          <p className="text-sm">
+            {recipe.time ? recipe.time.toString().slice(0, 17) : ""}
+          </p>
+          <p className="text-sm">Servings: {recipe.servings}</p>
+        </div>
+      </div>
+    </div>
+  );
 
-  // Pagination variables
-  const itemsPerPage = 6;
-  const totalPages = Math.ceil(recipes.length / itemsPerPage);
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const displayedRecipes = recipes.slice(startIndex, endIndex);
-
-  // Function to navigate to previous page
-  const goToPreviousPage = () => {
-    setCurrentPage((prevPage) => prevPage - 1);
-  };
-
-  // Function to navigate to next pagen
-  const goToNextPage = () => {
-    setCurrentPage((prevPage) => prevPage + 1);
-  };
-
-  // console.log(displayedRecipes);
-
-  console.log(searchResults);
-  const handleSearchResultsChange = (results) => {
-    setSearchResults(results);
-  };
-
-  const handleSearch = (event) => {
-    const searchTerm = event.target.value.toLowerCase();
-    setCurrentPage(1); // Reset current page to 1
-
-    if (searchTerm === "") {
-      // If the search term is empty, display all recipes
-      setIsSearching(false);
-      setSearchResults([]);
-      setRecipes(originalRecipes);
-    } else {
-      // Filter recipes based on the search term
-      setIsSearching(true);
-      const results = originalRecipes.filter((recipe) =>
-        recipe.name.toLowerCase().includes(searchTerm)
-      );
-      setSearchResults(results);
-      setRecipes(results);
-    }
-  };
+  const paginatedRecipes = recipes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
-    <div className="w-[90%] mx-auto h-[90vh] overflow-scroll no-scrollbar">
-      <Header onSearchResultsChange={handleSearchResultsChange} />
-
+    <div className="w-[90%] mx-auto h-[100vh] pb-32 overflow-scroll no-scrollbar">
+      <Header onSearchResultsChange={setSearchResults} />
       <Tags activeTag={activeTag} onTagClick={handleTagClick} />
 
-      <h1 className="text-4xl text-center font-extrabold">Recipe Page</h1>
+      <h1 className="text-4xl text-center font-extrabold mb-8">
+        {title || "Recipe Page"}
+      </h1>
+
+      {showSuccessModal && (
+        <div className="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded">
+          Recipe bookmarked successfully!
+        </div>
+      )}
 
       {searchResults.length > 0 && (
-        
-      <div className="carousel overflow-x-scroll no-scrollbar m-auto">
-          <div className="text-center font-medium text-lg text-copper-orange">
-        <h1>({searchResults.length}) Recipes found</h1>
-      </div>
-     
-        <div className="inner-carousel flex flex-wrap justify-center">
-          {searchResults.map((recipe, index) => (
-            <div key={index}>
-             
-                <div className="item w-64 h-[22rem]" key={index}>
-              <div className="w-64 h-64 object-center p-4 pl-4 relative cursor-pointer top-0">
-                <button
-                  className="absolute right-5"
-                  onClick={() => handleBookMarkClick(index)}
-                  >
-                  <img
-                    src={
-                      bookmarkStatus[index]
-                        ? fullBookmarkIcon
-                        : emptyBookmarkIcon
-                    }
-                    className="w-5 my-2"
-                    alt="bookmark"
-                    />
-                </button>
-                <img
-                  src={recipe.picture}
-                  className="rounded-md bg-slate-200 h-full w-full"
-                  alt=""
-                  onClick={() => handleImageClicks(recipe, index)}
-                  />
-                <Link to={`/ViewDish/${index}`}>
-                  <div className="mt-2">
-                    <h5 className="text-[14px] font-semibold">{recipe.name}</h5>
-                    <p className="flex items-center text-[14px]">
-                      {recipe.rating}
-                    </p>
-                    <p className="text-[14px]">{recipe.type}</p>
-                    <p className="text-[14px]">
-                      {recipe.time ? recipe.time.toString().slice(0, 17) : ""}
-                    </p>
-                    <p className="text-[14px]">{recipe.servings}</p>
-                  </div>
-                </Link>
-              </div>
-            </div>
-            </div>
-          
-            
-          ))}
-
+        <div>
+          <div className="text-center font-medium text-lg text-[#B87C4C] mb-4">
+            ({searchResults.length}) Recipes found
+          </div>
+          <div className="flex flex-wrap justify-center gap-4">
+            {searchResults.map((recipe, index) => (
+              <RecipeCard key={recipe.$id} recipe={recipe} index={index} />
+            ))}
+          </div>
+          <div className="text-center font-medium text-lg mt-8">
+            <h2>Explore More</h2>
+          </div>
         </div>
-      <div className="text-center font-medium text-lg">
-        <h1>Explore More</h1>
-      </div>
-      </div>
       )}
-      <h1 className="text-xl font-semibold">{props.title}</h1>
 
-      <div className="carousel overflow-x-scroll no-scrollbar m-auto">
-        <div className="inner-carousel flex flex-wrap justify-center">
-          {displayedRecipes.map((recipe, index) => (
-            <div className="item w-64 h-[22rem]" key={index}>
-              <div className="w-64 h-64 object-center p-4 pl-4 relative cursor-pointer top-0">
-                <button
-                  className="absolute right-5"
-                  onClick={() => handleBookMarkClick(index)}
-                >
-                  <img
-                    src={
-                      bookmarkStatus[index]
-                        ? fullBookmarkIcon
-                        : emptyBookmarkIcon
-                    }
-                    className="w-5 my-2"
-                    alt="bookmark"
-                  />
-                </button>
-                <img
-                  src={recipe.picture}
-                  className="rounded-md bg-slate-200 h-full w-full"
-                  alt=""
-                  onClick={() => handleImageClick(recipe, index)}
-                />
-                <Link to={`/ViewDish/${index}`}>
-                  <div className="mt-2">
-                    <h5 className="text-[14px] font-semibold">{recipe.name}</h5>
-                    <p className="flex items-center text-[14px]">
-                      {recipe.rating}
-                    </p>
-                    <p className="text-[14px]">{recipe.type}</p>
-                    <p className="text-[14px]">
-                      {recipe.time ? recipe.time.toString().slice(0, 17) : ""}
-                    </p>
-                    <p className="text-[14px]">{recipe.servings}</p>
-                  </div>
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="flex flex-wrap justify-center gap-4">
+        {isLoading ? (
+          // Show skeleton loaders while loading
+          Array.from({ length: itemsPerPage }).map((_, index) => (
+            <RecipeSkeleton key={index} />
+          ))
+        ) : (
+          paginatedRecipes.map((recipe, index) => (
+            <RecipeCard key={recipe.$id} recipe={recipe} index={index} />
+          ))
+        )}
       </div>
 
-      <div className="flex justify-center mt-6">
+      <div className="flex justify-center gap-4 mt-8 mb-8">
         <button
-          className={`px-4 py-2 rounded-md ${
-            currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
+          className={`px-4 py-2 rounded bg-[#B87C4C] text-white ${
+            currentPage === 1 ? "opacity-50 cursor-not-allowed" : "hover:bg-[#A66B3B]"
           }`}
           disabled={currentPage === 1}
-          onClick={goToPreviousPage}
+          onClick={() => setCurrentPage(p => p - 1)}
         >
           Previous
         </button>
         <button
-          className={`px-4 py-2 rounded-md ${
-            currentPage === totalPages ? "opacity-50 cursor-not-allowed" : ""
+          className={`px-4 py-2 rounded bg-[#B87C4C] text-white ${
+            currentPage === Math.ceil(recipes.length / itemsPerPage)
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:bg-[#A66B3B]"
           }`}
-          disabled={currentPage === totalPages}
-          onClick={goToNextPage}
+          disabled={currentPage === Math.ceil(recipes.length / itemsPerPage)}
+          onClick={() => setCurrentPage(p => p + 1)}
         >
           Next
         </button>

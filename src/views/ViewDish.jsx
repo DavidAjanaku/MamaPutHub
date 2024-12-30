@@ -1,157 +1,154 @@
 import React, { useEffect } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import { ChevronLeft, Trash2, Clock, Users, ChefHat } from "lucide-react";
 import Button from "../components/Button";
-import BackArrow from "../components/BackClick/BackArrow";
 import { databases } from "../services/appwriteConfig";
-import deleteButton from "/assets/delete.png";
 
 const ViewDish = () => {
-  const { id } = useParams(); // Retrieves the id (index) from the URL parameter
+  const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
   const carouselItems = location.state?.array;
   const dish = carouselItems && carouselItems[id];
 
-  // Navigates back to the previous page when the back arrow is clicked
   const handleBackClick = () => {
-    navigate(-1); // Go back to the previous page
+    navigate(-1);
   };
 
-  console.log(carouselItems);
-
-  // Navigates to the recipe directions page for the selected dish
   const handleDirection = () => {
     navigate(`/RecipeDirection/${id}`, { state: { dish: dish } });
   };
 
-  useEffect(() => {
-    // Add any additional code you need to fetch and update dish information based on the id (index)
-    // Example: fetchDishInfo(id)
-  }, [id]);
-
-  const handleConfirmDelete = () => {
-    // Perform delete operation in Appwrite database
-    const promise = databases.deleteDocument(
-      "64773737337f23de254d",
-      "6479a9441b13f7a9ad4d",
-      dish.$id
-    );
-
-    promise.then(
-      function (response) {
-        console.log(response); // Success
-      },
-      function (error) {
-        console.log(error); // Failure
-      }
-    );
-    navigate("/YourLibrary");
+  const handleDelete = async (collectionId) => {
+    try {
+      await databases.deleteDocument(
+        "64773737337f23de254d",
+        collectionId,
+        dish.$id
+      );
+      navigate("/YourLibrary");
+    } catch (error) {
+      console.error("Error deleting recipe:", error);
+    }
   };
 
-  const handleConfirmDeleteCreatedRecipe = () => {
-    // Perform delete operation in Appwrite database
-    const promise = databases.deleteDocument(
-      "64773737337f23de254d",
-      "647b9e24d59661e7bfbe",
-      dish.$id
-    );
+  const handleConfirmDelete = () => handleDelete("6479a9441b13f7a9ad4d");
+  const handleConfirmDeleteCreatedRecipe = () => handleDelete("647b9e24d59661e7bfbe");
 
-    promise.then(
-      function (response) {
-        console.log(response); // Success
-      },
-      function (error) {
-        console.log(error); // Failure
-      }
+  if (!dish) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-lg text-gray-600">No recipe found.</p>
+      </div>
     );
-    navigate("/YourLibrary");
-  };
+  }
 
   return (
-    <div className="h-[90vh] overflow-scroll no-scrollbar md:h-[100vh] md:w-5/6  mx-auto">
-      <div className="p-4">
-        <div className="flex justify-between pb-4">
-          <BackArrow onClick={handleBackClick} />
-
-          <div onClick={handleConfirmDelete}>
-            <img
-              src={deleteButton}
-              className="w-6 h-6"
-              alt=""
-              onClick={handleConfirmDeleteCreatedRecipe}
-            />
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md shadow-sm">
+          <div className="px-4 py-3  flex items-center justify-between">
+            <button 
+              onClick={handleBackClick}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ChevronLeft className="w-6 h-6 text-gray-600" />
+            </button>
+            <button 
+              onClick={handleConfirmDelete}
+              className="p-2 hover:bg-red-50 rounded-full transition-colors"
+            >
+              <Trash2 className="w-6 h-6 text-red-500" onClick={handleConfirmDeleteCreatedRecipe} />
+            </button>
           </div>
         </div>
-        {dish ? (
-          <div>
-            <div className="h-72 md:h-[50vh]">
-              <img
-                src={dish.picture}
-                alt={dish.food_name}
-                className="h-full w-full object-scale-down"
-              />
-            </div>
-            <div className="overflow-scroll meda overscroll-contain ">
-              <div className="bg-copper-orange inset-0 p-4 overflow-y-auto overscroll-contain">
-                <h1 className="text-2xl text-center font-medium">
-                  {dish.food_name}
-                  {dish.name}
-                </h1>
 
-                <div className="flex justify-center justify-evenly mt-4 flex-wrap items-center">
-                  <p className="text-sm  border-black pl-3 pr-3">
-                    {" "}
-                    Recipe Author: &nbsp;
-                    <span className="text-lemon-meringue">
-                      <Link to={"/MyProfile"}>
-                        {dish.author}
-                        {dish.username}
-                      </Link>
-                    </span>
-                  </p>
+        {/* Image Section */}
+        <div className="relative h-[40vh] md:h-[50vh] bg-gray-100">
+          <img
+            src={dish.picture}
+            alt={dish.food_name || dish.name}
+            className="h-full w-full object-cover"
+          />
+        </div>
 
-                  <p className="text-sm border-l-2 border-black pl-3 pr-3">
-                    {" "}
-                    {dish.type}
-                  </p>
-                  <p className="text-sm border-l-2 border-black pl-3 pr-3">
-                    {" "}
-                    {dish.level}
-                  </p>
-                 
-                  <p className="text-sm border-l-2 border-black pl-3 pr-3">
-                    Servings: {dish.servings}
-                  </p>
-               
-                </div>
+        {/* Content Section */}
+        <div className="px-4 py-6 bg-white min-h-[60vh] pb-32">
+          {/* Title */}
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            {dish.food_name || dish.name}
+          </h1>
 
-                <div className="mt-4">
-                  <div>
-                    <h1 className="text-xl font-medium">Description</h1>
-                    <p>{dish.description}</p>
-                  </div>
-                  <br />
-                  <br />
-                  <h1 className="text-xl font-medium">Ingredients</h1>
-                  <ul className="text-sm">
-                    {dish.ingredients.map((ingredient, index) => (
-                      <li key={index} className="flex justify-between">
-                        <span>{ingredient}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+          {/* Meta Information */}
+          <div className="flex flex-wrap gap-4 mb-8">
+            {/* <Link 
+              // to="/MyProfile"
+              className="flex items-center gap-2 text-sm text-orange-600 hover:text-orange-700"
+            >
+              <ChefHat className="w-4 h-4" />
+              <span>{dish.author || dish.username}</span>
+            </Link> */}
+            <span>{dish.author || dish.username}</span>
+            {dish.type && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span className="px-2 py-1 bg-gray-100 rounded-full">
+                  {dish.type}
+                </span>
               </div>
-              <br />
-              <div onClick={handleDirection} className="cursor-pointer">
-                <Button title="Show directions" />
+            )}
+            
+            {dish.level && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span className="px-2 py-1 bg-gray-100 rounded-full">
+                  {dish.level}
+                </span>
               </div>
-            </div>
+            )}
+            
+            {dish.servings && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Users className="w-4 h-4" />
+                <span>{dish.servings} servings</span>
+              </div>
+            )}
           </div>
-        ) : (
-          <p>No dish found.</p>
-        )}
+
+          {/* Description */}
+          {dish.description && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">Description</h2>
+              <p className="text-gray-600 leading-relaxed">{dish.description}</p>
+            </div>
+          )}
+
+          {/* Ingredients */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">Ingredients</h2>
+            <ul className="space-y-2">
+              {dish.ingredients.map((ingredient, index) => (
+                <li 
+                  key={index}
+                  className="flex items-center gap-2 text-gray-600 p-3 bg-gray-50 rounded-lg"
+                >
+                  <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                  {ingredient}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Directions Button */}
+          <div className="sticky bottom-4 pt-4">
+            <button
+              onClick={handleDirection}
+              className="w-full bg-orange-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-orange-700 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+            >
+              View Cooking Instructions
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

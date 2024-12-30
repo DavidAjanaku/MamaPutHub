@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
-import dummyImage from "/assets/user.png";
-import Button from "../components/Button";
-import leftarrow from "/assets/left arrow.png";
-import BackArrow from "../components/BackClick/BackArrow";
-import { Link, useNavigate } from "react-router-dom";
-import { tags } from "../components/Tags";
-import IngredientForm from "../components/IngredientForm";
-import AllDone from "./AllDone";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Plus, Minus, ImagePlus, Trash2 } from "lucide-react";
 import { account, storage } from "../services/appwriteConfig";
 import { createRecipe } from "../services/appwriteConfig";
 import { v4 as uuidv4 } from "uuid";
+
+
+
+import { tags } from "../components/Tags";
 
 
 
@@ -18,537 +16,368 @@ const LevelTags = [
   { name: "Medium" },
   { name: "Like a PRO" },
 ];
- const userId = account.get();
 
-userId.then(function (response) {
-    console.log(response.$id);
-    console.log(response.name);
-}, function (error) {
-    console.log(error);
-});
-
-
-function FoodForm({ formData, setFormData, handlePrevious }) {
-  const [steps, setSteps] = useState([{ name: "" }]);
-
+function StepForm({ steps, setSteps, setFormData }) {
   const handleChange = (e, index) => {
     const { value } = e.target;
     const updatedSteps = [...steps];
     updatedSteps[index].name = value;
     setSteps(updatedSteps);
-    setFormData((prevData) => ({
-      ...prevData,
-      steps: updatedSteps.map((step) => step.name),
-    }));
-  };
-  
-
-
-
-
-  const handleAddStep = () => {
-    setSteps([...steps, { name: "" }]);
-  };
-
-
-  
-  const handleRemoveStep = (index) => {
-    const updatedSteps = [...steps];
-    updatedSteps.splice(index, 1);
-    setSteps(updatedSteps);
-    setFormData((prevData) => ({
-      ...prevData,
-      steps: updatedSteps.map((step) => step.name),
+    setFormData(prev => ({
+      ...prev,
+      steps: updatedSteps.map(step => step.name)
     }));
   };
 
   return (
-    <div>
+    <div className="space-y-4">
       {steps.map((step, index) => (
-        <div key={index}>
-          <label className="font-medium">
-            Step Name: <br />
-            <input
-              type="text"
-              value={step.name}
-              required
-              onChange={(e) => handleChange(e, index)}
-              className="my-2 p-2 rounded border border-gray-300"
-            />
-          </label>{" "}
-          <br />
+        <div key={index} className="relative">
+          <input
+            type="text"
+            value={step.name}
+            onChange={(e) => handleChange(e, index)}
+            placeholder={`Step ${index + 1}`}
+            className="w-full p-3 border rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            required
+          />
           {index > 0 && (
-            <button type="button" onClick={() => handleRemoveStep(index)}>
-              Remove
+            <button
+              onClick={() => {
+                const newSteps = steps.filter((_, i) => i !== index);
+                setSteps(newSteps);
+                setFormData(prev => ({
+                  ...prev,
+                  steps: newSteps.map(step => step.name)
+                }));
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-red-500 hover:text-red-700"
+            >
+              <Trash2 size={18} />
             </button>
           )}
         </div>
       ))}
-      <br />
-
-      <div onClick={handleAddStep}>
-        <Button title="Add More Steps" />
-      </div>
-      <br />
+      <button
+        onClick={() => setSteps([...steps, { name: "" }])}
+        className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+      >
+        <Plus size={18} /> Add Step
+      </button>
     </div>
   );
 }
 
-
-
-function NewRecipe() {
-
-  const [selectedPicture, setSelectedPicture] = useState(null);
-
+export default function NewRecipe() {
   const [step, setStep] = useState(1);
-  
-
-  useEffect(() => {
-    account.get().then(
-      (response) => {
-        setFormData((prevData) => ({
-          ...prevData,
-          userId: response.$id,
-          username: response.name,
-        }));
-      },
-      (error) => {
-        console.log(error);
-      }
-    );
-  }, []);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
-  };
-
-  const handleNext = () => {
-    setStep((prevStep) => prevStep + 1);
-  };
-
-  const handlePrevious = () => {
-    setStep((prevStep) => prevStep - 1);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-  
-  
-    try {
-      const response = await createRecipe(formData);
-      console.log('Recipe created:', response);
-      // Handle any further actions or redirection after creating the recipe
-    } catch (error) {
-      console.error('Error creating recipe:', error);
-      // Handle the error appropriately
-    }
-  
-    const totalTime = calculateTotalTime();
-    const updatedSteps = formData.steps.map((step) => ({
-      ...step,
-      totalTime: step.time ? parseInt(step.time) : 0,
-    }));
-  
-    setFormData((prevData) => ({
-      ...prevData,
-      steps: updatedSteps,
-      totalTime: totalTime,
-    }));
-    setStep((prevStep) => prevStep + 1);
-    navigate("/AllDone");
-  };
-  
-
-  const handleIncrement = () => {
-    setFormData((prevData) => ({
-      ...prevData,
-      servings: prevData.servings + 1,
-    }));
-  };
-  
-  const handleDecrement = () => {
-    if (formData.servings > 0) {
-      setFormData((prevData) => ({
-        ...prevData,
-        servings: prevData.servings - 1,
-      }));
-    }
-  };
-  
-  let picture= " ";
-
- const handlePictureChange = async (event) => {
-  const fileIm = event.target.files[0];
-  setSelectedPicture(URL.createObjectURL(fileIm));
-  console.log(fileIm);
-  const fileId = uuidv4(); // Generate a random UUID
-
-  const userId = account.get();
-
-  userId.then(function (response) {
-    console.log(response.$id);
-    console.log(userId);
-  }, function (error) {
-    console.log(error);
-  });
-
-  try {
-    // Upload the file to the storage
-    const newImage = await storage.createFile("647e6735532e8f214235", fileId, fileIm);
-    console.log(newImage);
-
-    console.log(newImage.URL);
-    const result = storage.listFiles('647e6735532e8f214235');
-console.log(result);
-
-const urlLink = `https://cloud.appwrite.io/v1/storage/buckets/647e6735532e8f214235/files/${fileId}/view?project=64676cf547e8830694b8&mode=admin`
-console.log(urlLink);
-
-setFormData((prevData) => ({
-  ...prevData,
-  picture: {
-    url: urlLink,
-  },
-}));
-picture = {
-  url: urlLink,
-};
-console.log(urlLink);
-
-   
-    // Update the formData with the new image
-    setFormData((prevData) => ({
-      ...prevData,
-      picture: urlLink,
-    }));
-    // Handle the successful upload (e.g., update UI or trigger further actions)
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    // Handle the error (e.g., show an error message)
-  }
-};
-
-  
-
-  const calculateTotalTime = () => {
-    let totalTime = 0;
-    formData.steps.forEach((step) => {
-      if (step.time) {
-        totalTime += parseInt(step.time);
-      }
-    });
-    return totalTime;
-  };
-
-  const handleBackClick = () => {
-    navigate(-1); // Go back to the previous page
-  };
-
+  const [selectedPicture, setSelectedPicture] = useState(null);
+  const [steps, setSteps] = useState([{ name: "" }]);
   const navigate = useNavigate();
-
-
-  const [image, setImage] = useState();
-  const uploadImage = async (e) => {
-    e.preventDefault();
-  
-    // Get the file input element
-    const fileInput = document.getElementById('picture');
-    const file = fileInput.files[0];
-  
-    if (file) {
-      try {
-        // Upload the file to the storage
-        const newImage = await storage.createFile("647e6735532e8f214235", userId, file);
-        console.log(newImage);
-        // Handle the successful upload (e.g., update UI or trigger further actions)
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        // Handle the error (e.g., show an error message)
-      }
-    } else {
-      console.log("No picture selected");
-    }
-  };
   
   const [formData, setFormData] = useState({
     picture: "",
     name: "",
     description: "",
     level: "",
-    servings: 0,
+    servings: 1,
     type: "",
     ingredients: [],
     steps: [],
-    userId : "",
-
-    
+    userId: "",
+    username: ""
   });
-  
+
+  useEffect(() => {
+    account.get().then(
+      (response) => {
+        setFormData(prev => ({
+          ...prev,
+          userId: response.$id,
+          username: response.name
+        }));
+      },
+      (error) => console.error(error)
+    );
+  }, []);
+
+  const handlePictureUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setSelectedPicture(URL.createObjectURL(file));
+    const fileId = uuidv4();
+
+    try {
+      await storage.createFile("647e6735532e8f214235", fileId, file);
+      const urlLink = `https://cloud.appwrite.io/v1/storage/buckets/647e6735532e8f214235/files/${fileId}/view?project=64676cf547e8830694b8&mode=admin`;
+      
+      setFormData(prev => ({
+        ...prev,
+        picture: urlLink
+      }));
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await createRecipe(formData);
+      console.log('Recipe created:', response);
+      navigate("/AllDone");
+    } catch (error) {
+      console.error('Error creating recipe:', error);
+    }
+  };
+
+  const renderStepIndicator = () => (
+    <div className="flex justify-center gap-2 mt-8">
+      {[1, 2, 3, 4].map(i => (
+        <div
+          key={i}
+          className={`w-3 h-3 rounded-full ${
+            step === i ? 'bg-blue-500' : 'bg-gray-300'
+          }`}
+        />
+      ))}
+    </div>
+  );
 
   return (
-    <div className="m-4 h-[89vh] overflow-scroll w-5/6  mx-auto  no-scrollbar md:h[100vh]">
-      <div className="flex justify-between mb-4">
-        <BackArrow onClick={handleBackClick} />
+    <div className="max-w-2xl mx-auto p-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 mb-6 text-gray-600 hover:text-gray-800"
+      >
+        <ArrowLeft size={20} /> Back
+      </button>
 
-        <button className="text-sm"></button>
-      </div>
-      <div className="h-[90vh] overflow-scroll">
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h1 className="text-2xl font-bold mb-6">Create New Recipe</h1>
+
         {step === 1 && (
-          <div>
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <h1 className="text-lg font-bold">Recipe Publication</h1>
-                <p className="font-medium"> Add a recipe cover</p>
-                <div className="bg-pastel-blue h-[30vh] mx-auto rounded-lg my-auto">
-                  {formData.picture ? (
-                    <img
-                      src={selectedPicture}
-                      alt="Selected"
-                      className="mx-auto h-full"
-                    />
-                  ) : (
-                    <div className="flex justify-center items-center h-full">
-                      <img
-                        src={dummyImage}
-                        alt="Dummy"
-                        className="mx-auto h-[40%] py-auto"
-                      />
-                    </div>
-                  )}
-                </div>
-                <br />
-                <label htmlFor="picture" className="block font-medium">
-                  {" "}
-                  Add an image <br />
-                  <input
-  type="file"
-  id="picture"
-  accept="image/*"
-  onChange={handlePictureChange}
-  className="border border-gray-300 rounded-md p-2 w-72 font-normal"
-  required
-/>
-
-
-                </label>
+          <div className="space-y-6">
+            <div className="relative">
+              <div 
+                className="w-full h-64 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden"
+                style={{
+                  backgroundImage: selectedPicture ? `url(${selectedPicture})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              >
+                {!selectedPicture && (
+                  <div className="text-center">
+                    <ImagePlus size={48} className="mx-auto text-gray-400" />
+                    <p className="mt-2 text-gray-500">Click to add recipe image</p>
+                  </div>
+                )}
               </div>
-              <label className="font-medium">
-                Name of recipe <br />
+              <input
+                type="file"
+                onChange={handlePictureUpload}
+                accept="image/*"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Recipe Name
+                </label>
                 <input
                   type="text"
-                  placeholder="for example? smashed potato and chicken"
-                  className="border font-normal border-gray-300 rounded-md p-2 ml-2 w-72"
-                  name="name"
                   value={formData.name}
-                  onChange={handleChange}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                  placeholder="e.g., Homemade Pizza"
                   required
                 />
-              </label>
+              </div>
+
               <div>
-                <br />
-                <label className="font-medium" required>
-                  Servings: <br />
-                  <button type="button" onClick={handleDecrement}>
-                    -
-                  </button>
-                  {formData.servings}
-                  <button type="button" onClick={handleIncrement}>
-                    +
-                  </button>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Servings
                 </label>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, servings: Math.max(1, prev.servings - 1) }))}
+                    className="p-2 rounded-lg border hover:bg-gray-100"
+                  >
+                    <Minus size={20} />
+                  </button>
+                  <span className="text-xl font-medium">{formData.servings}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, servings: prev.servings + 1 }))}
+                    className="p-2 rounded-lg border hover:bg-gray-100"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </div>
               </div>
-              <br />
-              <div onClick={handleNext}>
-                <Button   onClick={(e) => uploadImage(e)} title="Next Step" />
-              </div>
-            </form>
-            <div className="text-center text-sm mt-4">Step 1</div>
+            </div>
           </div>
         )}
 
         {step === 2 && (
-          <div>
-            <h1 className="text-lg font-bold">Recipe Publication</h1>
-
-            <form onSubmit={handleSubmit}>
-              <label className="font-medium">
-                Description:
-                <br />
-                <input
-                  type="text"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  className="border border-gray-300 rounded-md p-2 font-normal  w-72"
-                  required
-                />
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
               </label>
-              <br /> <br />
-              <label className="font-medium">
-                Level: <br />
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                rows={4}
+                placeholder="Describe your recipe..."
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Difficulty Level
+                </label>
                 <select
-                  name="level"
                   value={formData.level}
-                  onChange={handleChange}
-                  className="my-2 p-2 rounded border border-gray-300 font-normal"
-                  style={{ minWidth: "200px" }}
+                  onChange={(e) => setFormData(prev => ({ ...prev, level: e.target.value }))}
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                  required
                 >
                   <option value="">Select level</option>
-                  {LevelTags.map((tag, index) => (
-                    <option key={index} value={tag.name}>
+                  {LevelTags.map(tag => (
+                    <option key={tag.name} value={tag.name}>
                       {tag.name}
                     </option>
                   ))}
                 </select>
-              </label>
-              <br />
-              <br />
-              <label className="font-medium">
-                Category: <br />
-                <select
-                  name="type"
-                  value={formData.type}
-                  onChange={handleChange}
-                  className="my-2 p-2 rounded border border-gray-300 font-normal"
-                  style={{ minWidth: "200px" }}
-                >
-                  <option value="">Select Category</option>
-                  {tags.map((tag, index) => (
-                    <option key={index} value={tag.name}>
-                      {tag.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <br />
-              <br />
-              <IngredientForm formData={formData} setFormData={setFormData} handlePrevious={handlePrevious} />
-
-
-              <div className="flex flex-col">
-              <div onClick={handleNext}>
-                  <Button title="Next Step" />
-                </div> <br />
-                <div onClick={handlePrevious} className="mb-4">
-                  <Button title="Previous Step" />
-                </div>
-             
               </div>
-            </form>
-            <div className="text-center text-sm mt-4">Step 2</div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                  required
+                >
+                  <option value="">Select category</option>
+                  {tags.map(tag => (
+                    <option key={tag.name} value={tag.name}>
+                      {tag.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         )}
 
         {step === 3 && (
-          <div>
-            <h1 className="text-lg font-bold">Recipe Publication</h1>
-            <br />
-            <form onSubmit={handleSubmit}>
-              <FoodForm
-                formData={formData}
-                setFormData={setFormData}
-                handlePrevious={handlePrevious}
-              />
-  <div onClick={handleNext}>
-                <Button title="Next Step" />
-              </div>
-
-              <br />
-              <div onClick={handlePrevious} className="mb-2">
-                <Button title="Previous Step" />
-              </div>
-            
-            </form>
-            <div className="text-center text-sm mt-4">Step 3</div>
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold">Recipe Steps</h2>
+            <StepForm
+              steps={steps}
+              setSteps={setSteps}
+              setFormData={setFormData}
+            />
           </div>
         )}
 
         {step === 4 && (
-
-
-          <div>
-            <h1 className="text-lg font-bold">Recipe Publication</h1>
-
-            <br />
-            <p className="mb-2 ">
-              <b>Name:</b> {formData.name}
-            </p>
-            <br />
-
-            <p className="mb-2 ">
-              <b>Servings:</b> {formData.servings}
-            </p>
-            <br />
-
-            <p className="mb-2 ">
-              <b>Description:</b> {formData.description}
-            </p>
-            <br />
-
-            <p className="mb-2 ">
-              <b>Level:</b> {formData.level}
-            </p>
-
-            <br />
-
-            <p className="mb-2 ">
-              <b>Steps:</b>
-            </p>
-            <br />
-            <ul>
-              {formData.steps.map((step, index) => (
-                <li key={index}>
-                  {step}
-                </li>
-              ))}
-            </ul>
-            <p className="mb-2 ">
-              <b>Ingredients:</b>
-            </p>
-            <ul>
-              {formData.ingredients.map((step, index) => (
-                <li key={index}>
-                  {step}
-                </li>
-              ))}
-            </ul>
-
-            <br />
-
-            <div className="mb-4">
-              {formData.picture && (
-                <img
-                  src={selectedPicture}
-                  alt="Selected"
-                  className="max-w-xs rounded"
-                />
-              )}
-            </div>
-            <div className="mb-4">
-              <div onClick={handlePrevious}>
-                <Button title="Previous" />
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold">Review Your Recipe</h2>
+            
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-medium text-gray-700">Basic Info</h3>
+                <dl className="mt-2 space-y-2">
+                  <div>
+                    <dt className="text-sm text-gray-500">Name</dt>
+                    <dd className="text-sm font-medium">{formData.name}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-gray-500">Servings</dt>
+                    <dd className="text-sm font-medium">{formData.servings}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-gray-500">Level</dt>
+                    <dd className="text-sm font-medium">{formData.level}</dd>
+                  </div>
+                </dl>
               </div>
-              <br />
-              <br />
+              
+              <div>
+                <h3 className="font-medium text-gray-700">Recipe Details</h3>
+                <dl className="mt-2 space-y-2">
+                  <div>
+                    <dt className="text-sm text-gray-500">Description</dt>
+                    <dd className="text-sm">{formData.description}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-gray-500">Category</dt>
+                    <dd className="text-sm font-medium">{formData.type}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
 
-              <form onSubmit={handleSubmit}>
-                <button
-                  type="submit"
-                  className="bg-pastel-blue hover:bg-laurel-green text-white font-medium py-2 px-4 rounded"
-                >
-                  Submit
-                </button>
-              </form>
+            {selectedPicture && (
+              <img
+                src={selectedPicture}
+                alt="Recipe"
+                className="w-full h-48 object-cover rounded-lg"
+              />
+            )}
+
+            <div className="space-y-4">
+              <h3 className="font-medium text-gray-700">Steps</h3>
+              <ol className="list-decimal list-inside space-y-2">
+                {formData.steps.map((step, index) => (
+                  <li key={index} className="text-sm">{step}</li>
+                ))}
+              </ol>
             </div>
           </div>
         )}
+
+        <div className="flex justify-between mt-8">
+          {step > 1 && (
+            <button
+              onClick={() => setStep(prev => prev - 1)}
+              className="px-6 py-2 border rounded-lg hover:bg-gray-50"
+            >
+              Previous
+            </button>
+          )}
+          
+          {step < 4 ? (
+            <button
+              onClick={() => setStep(prev => prev + 1)}
+              className="ml-auto px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              className="ml-auto px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            >
+              Create Recipe
+            </button>
+          )}
+        </div>
+
+        {renderStepIndicator()}
       </div>
     </div>
   );
 }
-
-export default NewRecipe;

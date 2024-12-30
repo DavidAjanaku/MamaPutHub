@@ -21,18 +21,34 @@ export default function Tags({ activeTag, onTagClick }) {
   };
 
   return (
-    <div className="flex w-full overflow-scroll mx-auto whitespace-nowrap no-scrollbar md:mx-auto md:w-[70%]">
-      {tags.map((tag, index) => (
-        <span
-          className={`m-2 text-center cursor-pointer p-1 rounded-3xl border-[1px] ${
-            activeTag === tag ? "border-blue-500" : "border-black"
-          } text-[12px] ${activeTag === tag ? "bg-blue-500 text-white" : ""}`}
-          key={index}
-          onClick={() => handleTagClick(tag)}
-        >
-          {tag.name}
-        </span>
-      ))}
+    <div className="relative w-full">
+      <div className="flex w-full overflow-x-auto pb-4 scrollbar-hide md:justify-center">
+        <div className="flex gap-2 px-4 md:px-0">
+          {tags.map((tag, index) => (
+            <button
+              key={index}
+              onClick={() => handleTagClick(tag)}
+              className={`
+                relative px-4 py-2 text-sm font-medium rounded-full
+                transition-all duration-200 ease-in-out
+                hover:scale-105 active:scale-95
+                ${
+                  activeTag === tag
+                    ? "bg-[#B87C4C] text-white shadow-lg hover:bg-[#A66B3B]"
+                    : "bg-white text-gray-700 border border-gray-200 hover:border-blue-300 hover:text-blue-500"
+                }
+                focus:outline-none focus:ring-2 focus:ring-[#A66B3B] focus:ring-offset-2
+              `}
+            >
+              <span className="whitespace-nowrap">{tag.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Fade indicators for scroll */}
+      <div className="absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-white to-transparent pointer-events-none md:hidden" />
+      <div className="absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent pointer-events-none md:hidden" />
     </div>
   );
 }

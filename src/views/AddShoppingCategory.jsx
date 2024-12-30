@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import BackArrow from "../components/BackClick/BackArrow.jsx";
 import { account, databases, storage } from "../services/appwriteConfig.js";
 import { v4 as uuidv4 } from "uuid";
-
+import { ArrowLeft, Upload, Plus, X, Save } from "lucide-react";
 
 const AddShoppingCategory = () => {
   const navigate = useNavigate();
@@ -11,230 +10,200 @@ const AddShoppingCategory = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedColor, setSelectedColor] = useState("");
   const [ingredientList, setIngredientList] = useState([]);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-
-const handleBackClick = () => {
-  navigate("/Shopping");
-};
-
-  const handleCategoryNameChange = (e) => {
-    setCategoryName(e.target.value);
+  const handleBackClick = () => {
+    navigate("/Shopping");
   };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     setSelectedImage(file);
+    
+    // Create preview URL
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const handleColorChange = (e) => {
-    setSelectedColor(e.target.value);
-  };
-
-  const handleIngredientChange = (e, index) => {
-    const updatedIngredientList = [...ingredientList];
-    updatedIngredientList[index] = e.target.value;
-    setIngredientList(updatedIngredientList);
-  };
-
-  const handleAddIngredient = () => {
-    setIngredientList([...ingredientList, ""]);
-  };
-
-  const handleRemoveIngredient = (index) => {
-    const updatedIngredientList = [...ingredientList];
-    updatedIngredientList.splice(index, 1);
-    setIngredientList(updatedIngredientList);
-  };
-
-  useEffect(() => {
-    let promise = databases.listDocuments(
-      "64773737337f23de254d",
-      "647905e0a9f44dd4d1a4",
-      [
-        // Query.equal('food_name')
-      ]
-    );
-
-    promise.then(
-      function (response) {
-        console.log(response);
-        setCarouselItems(response.documents);
-        setBookmarkStatus(Array(response.documents.length).fill(false));
-      },
-      function (error) {
-        console.log(error);
-      }
-    );
-  }, []);
-
-
-  const userId = account.get();
-
-  userId.then(function (response) {
-    console.log(response);
-      console.log(response.$id);
-  }, function (error) {
-      console.log(error);
-  });
   const handleSaveCategory = async (event) => {
-    // Other code...
-  
-    const fileInput = document.getElementById('imageUpload');
-    const file = fileInput.files[0];
-    const fileId = uuidv4(); // Generate a random UUID
-  
-    const newImage = await storage.createFile("647e6735532e8f214235", fileId, file);
-    const imageUrl =  `https://cloud.appwrite.io/v1/storage/buckets/647e6735532e8f214235/files/${fileId}/view?project=64676cf547e8830694b8&mode=admin`
-
-  
-    const newCategory = {
-      userId: (await userId).$id,
-      category_name: categoryName,
-      picture: imageUrl, // Use the image URL in the newCategory object
-      color: selectedColor,
-      ingredients: ingredientList,
-    };
-  
-    console.log("New Category:", newCategory); // Log the new category object
-  
-    // try {
-    //   // Save the new category to the database or any other storage service
-    //   const savedList = await saveShoppingList({ documentId, ...newCategory });
-    //   console.log("Shopping list saved:", savedList);
-    // } catch (error) {
-    //   console.error("Error saving shopping list:", error);
-    // }
-
     try {
-      const documentId = uuidv4(); // Generate a random UUID
-      console.log('Recipe:', newCategory);
-      console.log('Document ID:', documentId);
-  
-      const response = await databases.createDocument(
-        "64773737337f23de254d", // Your project ID
-        "647905e0a9f44dd4d1a4", // Your collection ID
-        documentId, // Use the generated UUID as the document ID
+      setIsSubmitting(true);
+      const fileInput = document.getElementById('imageUpload');
+      const file = fileInput.files[0];
+      const fileId = uuidv4();
+
+      const newImage = await storage.createFile("647e6735532e8f214235", fileId, file);
+      const imageUrl = `https://cloud.appwrite.io/v1/storage/buckets/647e6735532e8f214235/files/${fileId}/view?project=64676cf547e8830694b8&mode=admin`;
+
+      const newCategory = {
+        userId: (await account.get()).$id,
+        category_name: categoryName,
+        picture: imageUrl,
+        color: selectedColor,
+        ingredients: ingredientList.filter(ingredient => ingredient.trim() !== ""),
+      };
+
+      const documentId = uuidv4();
+      await databases.createDocument(
+        "64773737337f23de254d",
+        "647905e0a9f44dd4d1a4",
+        documentId,
         newCategory,
       );
-  
-      console.log('Recipe created:', response);
+
       navigate("/shopping");
-      return response; // Optionally, return the created recipe document
     } catch (error) {
-      console.error('Error creating recipe:', error);
-      throw error;
+      console.error('Error creating category:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
-  
-  
-  
-  
-  
-  
-  const saveShoppingList = async (formData) => {
-    try {
-      const collectionId = "64773737337f23de254d"; // Replace with your actual collection ID
-      const document = await databases.createDocument(collectionId, formData);
-  
-      console.log("Shopping list created:", document);
-      return document;
-    } catch (error) {
-      console.error("Error saving shopping list:", error);
-      throw new Error("Failed to save shopping list: " + error.message);
-    }
-  };
-  
-  
-  
-  
-  
 
   return (
-    <div className="max-w-lg mx-auto my-12 p-4">
-      <BackArrow onClick={handleBackClick} />
-      <h1 className="text-xl font-semibold mb-4">Add Shopping Category</h1>
-      <form className="space-y-4">
-        <div>
-          <label htmlFor="categoryName" className="text-lg">
-            Category Name:
-          </label>
-          <input
-            type="text"
-            required
-            id="categoryName"
-            value={categoryName}
-            onChange={handleCategoryNameChange}
-            className="border border-gray-300 rounded-md p-2 w-full"
-          />
-        </div>
-        <div>
-          <label htmlFor="imageUpload" className="text-lg">
-            Image:
-          </label>
-          <input
-            type="file"
-            required
-            id="imageUpload"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="border border-gray-300 rounded-md p-2 w-full"
-          />
-        </div>
-        <div>
-          <label htmlFor="colorSelect" className="text-lg">
-            Color:
-          </label>
-          <select
-            id="colorSelect"
-            value={selectedColor}
-            onChange={handleColorChange}
-            className="border border-gray-300 rounded-md p-2 w-full"
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-xl mx-auto">
+        <div className="mb-6 flex items-center">
+          <button 
+            onClick={handleBackClick}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <option value="">Select a color</option>
-            <option value="pastel-blue">Pastel Blue</option>
-            <option value="laurel-green">Laurel Green</option>
-            <option value="copper-orange">Copper Orange</option>
-            <option value="pastel-pink">Pastel Pink</option>
-            <option value="lemon-meringue">Lemon Meringue</option>
-          </select>
+            <ArrowLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          <h1 className="text-2xl font-bold text-gray-800 ml-4">
+            Add Shopping Category
+          </h1>
         </div>
-        <div>
-          <label className="text-lg">Ingredients:</label> <br />
-          {ingredientList.map((ingredient, index) => (
-            <div key={index} className="flex items-center">
+
+        <div className="bg-white rounded-xl shadow-sm p-6 space-y-6">
+          <div>
+            <label htmlFor="categoryName" className="block text-sm font-medium text-gray-700 mb-2">
+              Category Name
+            </label>
+            <input
+              type="text"
+              id="categoryName"
+              value={categoryName}
+              onChange={(e) => setCategoryName(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              placeholder="Enter category name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Image
+            </label>
+            <div className="relative">
               <input
-                type="text"
-                required
-                value={ingredient}
-                onChange={(e) => handleIngredientChange(e, index)}
-                className="border border-gray-300 rounded-md p-2 flex-1 mr-2"
+                type="file"
+                id="imageUpload"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
               />
+              <label
+                htmlFor="imageUpload"
+                className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors"
+              >
+                {imagePreview ? (
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="h-full w-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-500">Click to upload image</span>
+                  </div>
+                )}
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="colorSelect" className="block text-sm font-medium text-gray-700 mb-2">
+              Color Theme
+            </label>
+            <select
+              id="colorSelect"
+              value={selectedColor}
+              onChange={(e) => setSelectedColor(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            >
+              <option value="">Select a color</option>
+              <option value="pastel-blue">Pastel Blue</option>
+              <option value="laurel-green">Laurel Green</option>
+              <option value="copper-orange">Copper Orange</option>
+              <option value="pastel-pink">Pastel Pink</option>
+              <option value="lemon-meringue">Lemon Meringue</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Ingredients
+            </label>
+            <div className="space-y-3">
+              {ingredientList.map((ingredient, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={ingredient}
+                    onChange={(e) => {
+                      const updatedList = [...ingredientList];
+                      updatedList[index] = e.target.value;
+                      setIngredientList(updatedList);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    placeholder="Enter ingredient"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updatedList = ingredientList.filter((_, i) => i !== index);
+                      setIngredientList(updatedList);
+                    }}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
               <button
                 type="button"
-                onClick={() => handleRemoveIngredient(index)}
-                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md"
+                onClick={() => setIngredientList([...ingredientList, ""])}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
               >
-                Remove
+                <Plus className="w-4 h-4" />
+                Add Ingredient
               </button>
             </div>
-          ))}
+          </div>
+
           <button
             type="button"
-            onClick={handleAddIngredient}
-            className="bg-copper-orange hover:bg-grey-text text-black px-3  py-2 rounded-md mt-2"
+            onClick={handleSaveCategory}
+            disabled={isSubmitting}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Add Ingredient
+            {isSubmitting ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                Save Category
+              </>
+            )}
           </button>
         </div>
-        <button
-          type="button"
-          onClick={handleSaveCategory}
-          className="bg-laurel-green hover:bg-pastel-blue text-black px-3 py-2 mt-2 rounded-md"
-        >
-          Save Category
-        </button>
-      </form>
+      </div>
     </div>
   );
 };
