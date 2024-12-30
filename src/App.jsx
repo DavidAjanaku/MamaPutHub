@@ -25,6 +25,7 @@ import AddShoppingCategory from "./views/AddShoppingCategory";
 import LoadingIndicator from "./components/LoadingIndicator";
 import { useNavigate } from "react-router-dom";
 import ProtectedRoute from "./components/utils/ProtectedRoute";
+import ScrollToTop from "./components/ScrollToTop";
 
 const closeModal = () => {
   // Implementation for closing the modal
@@ -54,6 +55,7 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop /> 
       {isLoading || !isDataLoaded ? (
         <LoadingIndicator />
       ) : (
