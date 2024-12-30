@@ -23,6 +23,7 @@ import Logout from "./views/Logout";
 import RecipesPage from "./views/RecipesPage";
 import AddShoppingCategory from "./views/AddShoppingCategory";
 import LoadingIndicator from "./components/LoadingIndicator";
+import { useNavigate } from "react-router-dom";
 import ProtectedRoute from "./components/utils/ProtectedRoute";
 
 const closeModal = () => {
@@ -33,7 +34,6 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem("isLoggedIn") === "true");
 
   useEffect(() => {
     setTimeout(() => {
@@ -44,13 +44,11 @@ function App() {
 
   const handleLogin = () => {
     setIsVisible(false);
-    setIsLoggedIn(true);
     localStorage.setItem("isLoggedIn", "true");
   };
 
   const handleLogout = () => {
     setIsVisible(false);
-    setIsLoggedIn(false);
     localStorage.setItem("isLoggedIn", "false");
   };
 
@@ -81,11 +79,13 @@ function App() {
                 element={<Achievement closeModal={closeModal} />}
               />
               <Route path="/NewRecipe" element={<NewRecipe />} />
+           
               <Route path="/ViewDish/:id" element={<ViewDish />} />
               <Route
                 path="/RecipeDirection/:id"
                 element={<RecipeDirection />}
               />
+           
               <Route
                 path="/SavedRecipe/:category"
                 element={<SavedRecipe closeModal={closeModal} />}
@@ -102,7 +102,7 @@ function App() {
               />
             </Route>
           </Routes>
-          {isLoggedIn && (
+          {localStorage.getItem("isLoggedIn") === "true" && (
             <>
               <Navigation />
               <SideBarNavigation setIsVisible={setIsVisible} />
